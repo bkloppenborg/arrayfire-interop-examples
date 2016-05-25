@@ -25,7 +25,9 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
+    //
     // 1. Create an OpenGL window
+    //
     GLFWwindow* window;
 
     /* Initialize the library */
@@ -43,7 +45,9 @@ int main(int argc, char** argv)
     /* Make the window's context current */
     glfwMakeContextCurrent(window);
 
-    // 2. Construct an OpenCL context
+    //
+    // 2. Construct an OpenCL context from the OpenGL context
+    //
     // a. Get properties for OpenCL-OpenGL interop on the current platform
     cl::Platform ocl_platform = cl::Platform::getDefault();
     vector<cl_context_properties> properties = get_interop_properties(ocl_platform());
@@ -55,14 +59,18 @@ int main(int argc, char** argv)
     cl_int status = clGetGLContextInfoKHR(properties.data(), CL_DEVICES_FOR_GL_CONTEXT_KHR,
                                           input_size,
                                           devices, &output_size);
-    // Assume the zeroth device matches, this may not always be true.
+
+    // Assume the zeroth device matches, this may not always be true, but is probably ok
+    // for this example.
     cl::Device device = cl::Device(devices[0]);
 
     // Create OpenCL context and queue from the device and properties obtained above
     cl::Context context(device, properties.data());
     cl::CommandQueue queue(context, device);
 
+    //
     // 3. Register the device with ArrayFire
+    //
     // Create a device from the current OpenCL device + context + queue
     afcl::addDevice(device(), context(), queue());
     // Switch to the device
@@ -85,7 +93,7 @@ int main(int argc, char** argv)
     glfwMakeContextCurrent(window);
 
     //
-    // 2. Create OpenGL resources and assign them to cl_mem references as needed.
+    // 4. Create OpenGL resources and assign them to cl_mem references as needed.
     //
     // Create a Vertex Array Object
     GLuint vao;
@@ -121,7 +129,7 @@ int main(int argc, char** argv)
                 vertex_b, colors_b);
 
     //
-    // 3. Use ArrayFire in your application
+    // 5. Use ArrayFire in your application
     //
     af::array af_vertices_t0 = af::array(2, 3, vertices);
     af::array af_vertices;
@@ -132,19 +140,19 @@ int main(int argc, char** argv)
         af_vertices = af_vertices_t0 * (cos(t) +1);
 
         //
-        // 4. Finish any pending ArrayFire operations
+        // 6. Finish any pending ArrayFire operations
         //
         af_vertices.eval();
 
         //
-        // 5. Obtain device pointers for af::array objects, copy values to OpenGL resources
-        //    Be sure to cudaGraphicsMapResources and cudaGraphicsUnmapResources.
+        // 7. Obtain device pointers for af::array objects, copy values to OpenGL resources
+        //    Be sure to acquire and release the OpenGL objects.
         // 
         cl_mem * d_vertices = af_vertices.device<cl_mem>();
         copy_to_gl_buffer(queue(), *d_vertices, vertex_cl, 6 * sizeof(float));
 
         //
-        // 6. Continue with normal OpenGL operations
+        // 8. Continue with normal OpenGL operations
         //
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -160,7 +168,7 @@ int main(int argc, char** argv)
     }
 
     //
-    // 6. Clean up cudaGraphicsResource_t and OpenGL resources.
+    // 9. Clean up cudaGraphicsResource_t and OpenGL resources.
     //
 
     delete_buffer(colors_b, GL_ARRAY_BUFFER, colors_cl);
@@ -178,7 +186,7 @@ int main(int argc, char** argv)
     af::setDevice(0);
     afcl::deleteDevice(device(), context());
 
-    // 7. Shut down OpenGL
+    // 10. Shut down OpenGL
     glfwTerminate();
 
     return 0;
