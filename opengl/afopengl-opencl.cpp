@@ -1,11 +1,6 @@
-
-#if defined (__APPLE__) || defined(MACOSX)	// Apple / OSX
-#elif defined WIN32 // Windows
-#else	// Linux
+#include "defines.h"
 
 #include <CL/cl2.hpp>
-
-#endif
 
 #include "arrayfire.h"
 #include "af/opencl.h"
@@ -18,6 +13,116 @@
 using namespace std;
 
 #include "clerrors.h"
+
+#include <GL/glx.h>
+// Get the properties required to enable OpenCL-OpenGL interop on the specified
+// platform
+vector<cl_context_properties> get_interop_properties(cl_platform_id platform)
+{
+    // Allocate enough space for defining the parameters below:
+    vector<cl_context_properties> properties(7);
+
+#if defined (__APPLE__) || defined(MACOSX)	// Apple / OSX
+
+    CGLContextObj context = CGLGetCurrentContext();
+    CGLShareGroupObj share_group = CGLGetShareGroup(context);
+
+    if(context != NULL && share_group != NULL)
+    {
+        properties[0] = CL_CONTEXT_PROPERTY_USE_CGL_SHAREGROUP_APPLE;
+        properties[1] = (cl_context_properties) share_group;
+        properties[2] = CL_CONTEXT_PLATFORM;
+        properties[3] = (cl_context_properties) platform;
+        properties[4] = 0;
+    }
+
+#elif defined WIN32 // Windows
+
+    HGLRC WINAPI context = wglGetCurrentContext();
+    HDC WINAPI dc = wglGetCurrentDC();
+
+    if(context != NULL && dc != NULL)
+    {
+        properties[0] = CL_GL_CONTEXT_KHR;
+        properties[1] = (cl_context_properties) context;
+        properties[2] = CL_WGL_HDC_KHR;
+        properties[3] = (cl_context_properties) dc;
+        properties[4] = CL_CONTEXT_PLATFORM;
+        properties[5] = (cl_context_properties) platform;
+        properties[6] = 0;
+    }
+
+#else	// Linux
+
+    GLXContext context = glXGetCurrentContext();
+    Display * display = glXGetCurrentDisplay();
+
+    if(context != NULL && display != NULL)
+    {
+        // Enable an OpenCL - OpenGL interop session.
+        // This works for an X11 OpenGL session on Linux.
+        properties[0] = CL_GL_CONTEXT_KHR;
+        properties[1] = (cl_context_properties) context;
+        properties[2] = CL_GLX_DISPLAY_KHR;
+        properties[3] = (cl_context_properties) display;
+        properties[4] = CL_CONTEXT_PLATFORM;
+        properties[5] = (cl_context_properties) platform;
+        properties[6] = 0;
+    }
+
+#endif
+
+    return properties;
+}
+
+void afInteropInit()
+{
+    
+    //
+    // 2. Construct an OpenCL context from the OpenGL context
+    //
+    // a. Get properties for OpenCL-OpenGL interop on the current platform
+    cl::Platform ocl_platform = cl::Platform::getDefault();
+    vector<cl_context_properties> properties = get_interop_properties(ocl_platform());
+
+    // b. Construct an OpenCL device corresponding to the interop device 
+    size_t input_size = 8;
+    size_t output_size = 0;
+    cl_device_id devices[input_size];
+    cl_int status = clGetGLContextInfoKHR(properties.data(), CL_DEVICES_FOR_GL_CONTEXT_KHR,
+                                          input_size,
+                                          devices, &output_size);
+
+    // Assume the zeroth device matches, this may not always be true, but is probably ok
+    // for this example.
+    cl::Device device = cl::Device(devices[0]);
+
+    // Create OpenCL context and queue from the device and properties obtained above
+    cl::Context context(device, properties.data());
+    cl::CommandQueue queue(context, device);
+
+    //
+    // 3. Register the device with ArrayFire
+    //
+    // Create a device from the current OpenCL device + context + queue
+    afcl::addDevice(device(), context(), queue());
+    // Switch to the device
+    afcl::setDevice(device(), context());
+
+}
+
+
+void afInteropTerminate()
+{
+
+    // ArrayFire 3.3 has a bug which will double-free the OpenCL queue and context
+    // if it is active during destruction. For the moment, the workaround is too
+    // select the default ArrayFire device and manually remove the custom device:
+    cl_device_id device = afcl::getDeviceId();
+    cl_context context = afcl::getContext();
+    af::setDevice(0);
+    afcl::deleteDevice(device, context);
+}
 
 
 /// Copies an OpenCL buffer to a (mapped) OpenGL buffer with no offsets.
@@ -103,6 +208,31 @@ create_buffer(GLuint& buffer,
 
     glBindBuffer(buffer_target, 0);
 }
+
+void
+create_renderbuffer(GLuint& buffer,
+                    GLenum format,
+                    const unsigned int width,
+                    const unsigned int height,
+                    af_graphics_t & cl_buffer)
+{
+    cl_mem * t_cl_buffer = new cl_mem();
+    int status = CL_SUCCESS;
+    cl_context context = afcl::getContext();
+
+    glGenRenderbuffers(1, &buffer);
+    glBindRenderbuffer(GL_RENDERBUFFER, buffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, format, width, height);
+
+    // Create the OpenCL buffer
+    *t_cl_buffer = clCreateFromGLRenderbuffer(context, CL_MEM_READ_WRITE,
+                                        buffer, &status);
+    OPENCL(status, "clCreateFromGLBuffer failed");
+    cl_buffer = t_cl_buffer;
+
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+}
+
 
 void
 delete_buffer(GLuint buffer,

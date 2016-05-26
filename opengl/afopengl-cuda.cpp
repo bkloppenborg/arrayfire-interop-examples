@@ -16,6 +16,8 @@ using namespace std;
         }                                                               \
     } while(0)
 
+void afInteropInit() {};
+void afInteropTerminate() {};
 
 void
 unmap_resource(cudaGraphicsResource_t cuda_resource,
@@ -92,6 +94,26 @@ create_buffer(GLuint& buffer,
     cuda_buffer = t_cuda_resource;
 
     glBindBuffer(buffer_target, 0);
+}
+
+void
+create_renderbuffer(GLuint& buffer,
+                    GLenum format,
+                    const unsigned int width,
+                    const unsigned int height,
+                    af_graphics_t & cuda_resource)
+{
+    cudaGraphicsResource_t * t_cuda_resource = new cudaGraphicsResource_t();
+
+    glGenRenderbuffers(1, &buffer);
+    glBindRenderbuffer(GL_RENDERBUFFER, buffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, format, width, height);
+
+    CUDA(cudaGraphicsGLRegisterImage(t_cuda_resource, buffer, GL_RENDERBUFFER,
+                                     cudaGraphicsRegisterFlagsNone));
+    cuda_resource = t_cuda_resource;
+
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
 }
 
 /// Deletes an OpenGL buffer and corresponding af_graphics_t object
