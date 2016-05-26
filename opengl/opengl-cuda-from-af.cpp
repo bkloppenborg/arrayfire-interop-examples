@@ -32,7 +32,7 @@ int main(int argc, char** argv)
         return -1;
 
     /* Create a windowed mode window and its OpenGL context */
-    window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
+    window = glfwCreateWindow(640, 480, "Hello World (CUDA)", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -109,8 +109,15 @@ int main(int argc, char** argv)
         // 5. Obtain device pointers for af::array objects, copy values to OpenGL resources
         //    Be sure to cudaGraphicsMapResources and cudaGraphicsUnmapResources.
         // 
-        float * d_vertices = af_vertices.device<float>();
+        af_graphics_t d_vertices = af_vertices.device<float>();
         copy_to_gl_buffer(d_vertices, vertex_cuda, GL_ARRAY_BUFFER, 6 * sizeof(float));
+
+        af_vertices = af::constant(0, 2, 3);
+        af_print(af_vertices);
+        d_vertices = af_vertices.device<float>();
+        cout << d_vertices << endl;
+        copy_from_gl_buffer(vertex_cuda, d_vertices, 6 * sizeof(float));
+        af_print(af_vertices);
 
         //
         // 6. Continue with normal OpenGL operations

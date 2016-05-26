@@ -22,7 +22,14 @@ delete_buffer(GLuint buffer,
 
 void copy_to_gl_buffer(
     af_graphics_t src,
+    af_graphics_t gl_dest,
+    size_t size,
+    size_t src_offset = 0,
+    size_t dest_offset = 0);
+
+void copy_from_gl_buffer(
+    af_graphics_t gl_src,
     af_graphics_t dest,
-    const unsigned size,
+    size_t size,
     size_t src_offset = 0,
     size_t dest_offset = 0);

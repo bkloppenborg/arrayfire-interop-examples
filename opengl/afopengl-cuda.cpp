@@ -30,24 +30,44 @@ unmap_resource(cudaGraphicsResource_t cuda_resource,
 // Gets the device pointer from the mapped resource
 // Sets is_mapped to true
 void copy_to_gl_buffer(af_graphics_t src,
-                       af_graphics_t dest,
-                       const unsigned size,
+                       af_graphics_t gl_dest,
+                       size_t size,
                        size_t src_offset,
                        size_t dst_offset)
 {
-    cudaGraphicsResource_t * t_dest = (cudaGraphicsResource_t*) dest;
+    cudaGraphicsResource_t * t_gl_dest = (cudaGraphicsResource_t*) gl_dest;
 
-    CUDA(cudaGraphicsMapResources(1, t_dest));
+    CUDA(cudaGraphicsMapResources(1, t_gl_dest));
 
     bool is_mapped = true;
     void * opengl_ptr = NULL;
     CUDA(cudaGraphicsResourceGetMappedPointer((void**)&opengl_ptr, (size_t*)&size,
-                                              *t_dest));
+                                              *t_gl_dest));
     CUDA(cudaMemcpy(opengl_ptr, src, size, cudaMemcpyDeviceToDevice));
 
-    unmap_resource(*t_dest, is_mapped);
+    unmap_resource(*t_gl_dest, is_mapped);
 }
 
+// Gets the device pointer from the mapped resource
+// Sets is_mapped to true
+void copy_from_gl_buffer(af_graphics_t gl_src,
+                       af_graphics_t dest,
+                       size_t size,
+                       size_t src_offset,
+                       size_t dst_offset)
+{
+    cudaGraphicsResource_t * t_gl_src = (cudaGraphicsResource_t*) gl_src;
+
+    CUDA(cudaGraphicsMapResources(1, t_gl_src));
+
+    bool is_mapped = true;
+    void * opengl_ptr = NULL;
+    CUDA(cudaGraphicsResourceGetMappedPointer((void**)&opengl_ptr, (size_t*)&size,
+                                              *t_gl_src));
+    CUDA(cudaMemcpy(dest, opengl_ptr, size, cudaMemcpyDeviceToDevice));
+
+    unmap_resource(*t_gl_src, is_mapped);
+}
 
 /// Creates an OpenGL buffer with a corresponding af_graphics_t
 ///
@@ -69,7 +89,7 @@ create_buffer(GLuint& buffer,
     CUDA(cudaGraphicsGLRegisterBuffer(t_cuda_resource,
                                       buffer, cudaGraphicsRegisterFlagsNone));
 
-    cuda_buffer = (af_graphics_t) t_cuda_resource;
+    cuda_buffer = t_cuda_resource;
 
     glBindBuffer(buffer_target, 0);
 }

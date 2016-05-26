@@ -96,7 +96,7 @@ int main(int argc, char** argv)
         return -1;
 
     /* Create a windowed mode window and its OpenGL context */
-    window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
+    window = glfwCreateWindow(640, 480, "Hello World (OpenCL)", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -209,8 +209,14 @@ int main(int argc, char** argv)
         // 7. Obtain device pointers for af::array objects, copy values to OpenGL resources
         //    Be sure to acquire and release the OpenGL objects.
         // 
-        cl_mem * d_vertices = af_vertices.device<cl_mem>();
-        copy_to_gl_buffer(*d_vertices, vertex_cl, 6 * sizeof(float));
+        af_graphics_t d_vertices = af_vertices.device<cl_mem>();
+        copy_to_gl_buffer(d_vertices, vertex_cl, 6 * sizeof(float));
+
+        af_vertices = af::constant(0, 2, 3);
+        af_print(af_vertices);
+        d_vertices = af_vertices.device<cl_mem>();
+        copy_from_gl_buffer(vertex_cl, d_vertices, 6 * sizeof(float));
+        af_print(af_vertices);
 
         //
         // 8. Continue with normal OpenGL operations
