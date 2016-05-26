@@ -13,12 +13,12 @@
 #include "arrayfire.h"
 // Add OpenCL interop header
 #include "af/cuda.h"
+#include "afopengl.h"
 
 #include <iostream>
 using namespace std;
 
 #include "gl-shaders.h" // source code for our (simple) shaders
-#include "cuda-gl.h"
 
 int main(int argc, char** argv)
 {
@@ -74,13 +74,13 @@ int main(int argc, char** argv)
 
     // Create a Vertex Buffer Object and copy the vertex data to it
     GLuint vertex_b;
-    cudaGraphicsResource_t vertex_cuda;
-    create_buffer(vertex_b, GL_ARRAY_BUFFER, &vertex_cuda, sizeof(vertices), GL_DYNAMIC_DRAW,
+    af_graphics_t vertex_cuda;
+    create_buffer(vertex_b, GL_ARRAY_BUFFER, sizeof(vertices), GL_DYNAMIC_DRAW, vertex_cuda,
                   vertices);
 
     GLuint colors_b;
-    cudaGraphicsResource_t colors_cuda;
-    create_buffer(colors_b, GL_ARRAY_BUFFER, &colors_cuda, sizeof(colors), GL_DYNAMIC_DRAW,
+    af_graphics_t colors_cuda;
+    create_buffer(colors_b, GL_ARRAY_BUFFER, sizeof(colors), GL_DYNAMIC_DRAW, colors_cuda,
                   colors);
 
     // Load the shaders
@@ -110,7 +110,7 @@ int main(int argc, char** argv)
         //    Be sure to cudaGraphicsMapResources and cudaGraphicsUnmapResources.
         // 
         float * d_vertices = af_vertices.device<float>();
-        copy_from_device_pointer(vertex_cuda, d_vertices, GL_ARRAY_BUFFER, 6 * sizeof(float));
+        copy_to_gl_buffer(d_vertices, vertex_cuda, GL_ARRAY_BUFFER, 6 * sizeof(float));
 
         //
         // 6. Continue with normal OpenGL operations

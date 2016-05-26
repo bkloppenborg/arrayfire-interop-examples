@@ -15,13 +15,74 @@
 #include "arrayfire.h"
 // Add OpenCL interop header
 #include "af/opencl.h"
-#include "cl-gl.h"
+#include "afopengl.h"
 #include "clerrors.h"
 
 #include <iostream>
 using namespace std;
 
 #include "gl-shaders.h" // source code for our (simple) shaders
+
+#include <GL/glx.h>
+// Get the properties required to enable OpenCL-OpenGL interop on the specified
+// platform
+vector<cl_context_properties> get_interop_properties(cl_platform_id platform)
+{
+    // Allocate enough space for defining the parameters below:
+    vector<cl_context_properties> properties(7);
+
+#if defined (__APPLE__) || defined(MACOSX)	// Apple / OSX
+
+    CGLContextObj context = CGLGetCurrentContext();
+    CGLShareGroupObj share_group = CGLGetShareGroup(context);
+
+    if(context != NULL && share_group != NULL)
+    {
+        properties[0] = CL_CONTEXT_PROPERTY_USE_CGL_SHAREGROUP_APPLE;
+        properties[1] = (cl_context_properties) share_group;
+        properties[2] = CL_CONTEXT_PLATFORM;
+        properties[3] = (cl_context_properties) platform;
+        properties[4] = 0;
+    }
+
+#elif defined WIN32 // Windows
+
+    HGLRC WINAPI context = wglGetCurrentContext();
+    HDC WINAPI dc = wglGetCurrentDC();
+
+    if(context != NULL && dc != NULL)
+    {
+        properties[0] = CL_GL_CONTEXT_KHR;
+        properties[1] = (cl_context_properties) context;
+        properties[2] = CL_WGL_HDC_KHR;
+        properties[3] = (cl_context_properties) dc;
+        properties[4] = CL_CONTEXT_PLATFORM;
+        properties[5] = (cl_context_properties) platform;
+        properties[6] = 0;
+    }
+
+#else	// Linux
+
+    GLXContext context = glXGetCurrentContext();
+    Display * display = glXGetCurrentDisplay();
+
+    if(context != NULL && display != NULL)
+    {
+        // Enable an OpenCL - OpenGL interop session.
+        // This works for an X11 OpenGL session on Linux.
+        properties[0] = CL_GL_CONTEXT_KHR;
+        properties[1] = (cl_context_properties) context;
+        properties[2] = CL_GLX_DISPLAY_KHR;
+        properties[3] = (cl_context_properties) display;
+        properties[4] = CL_CONTEXT_PLATFORM;
+        properties[5] = (cl_context_properties) platform;
+        properties[6] = 0;
+    }
+
+#endif
+
+    return properties;
+}
 
 int main(int argc, char** argv)
 {
@@ -113,14 +174,14 @@ int main(int argc, char** argv)
 
     // Create a Vertex Buffer Object and copy the vertex data to it
     GLuint vertex_b;
-    cl_mem vertex_cl;
+    af_graphics_t vertex_cl;
     create_buffer(vertex_b, GL_ARRAY_BUFFER, sizeof(vertices), GL_DYNAMIC_DRAW,
-                  context(), vertex_cl, CL_MEM_WRITE_ONLY, vertices);
+                  vertex_cl, vertices);
 
     GLuint colors_b;
-    cl_mem colors_cl;
+    af_graphics_t colors_cl;
     create_buffer(colors_b, GL_ARRAY_BUFFER, sizeof(colors), GL_DYNAMIC_DRAW,
-                  context(), colors_cl, CL_MEM_WRITE_ONLY, colors);
+                  colors_cl, colors);
 
     // Load the shaders
     GLuint vertexShader, fragmentShader, shaderProgram;
@@ -149,7 +210,7 @@ int main(int argc, char** argv)
         //    Be sure to acquire and release the OpenGL objects.
         // 
         cl_mem * d_vertices = af_vertices.device<cl_mem>();
-        copy_to_gl_buffer(queue(), *d_vertices, vertex_cl, 6 * sizeof(float));
+        copy_to_gl_buffer(*d_vertices, vertex_cl, 6 * sizeof(float));
 
         //
         // 8. Continue with normal OpenGL operations
