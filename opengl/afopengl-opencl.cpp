@@ -1,3 +1,12 @@
+/*******************************************************
+ * Copyright (c) 2016, ArrayFire
+ * All rights reserved.
+ *
+ * This file is distributed under 3-clause BSD license.
+ * The complete license agreement can be obtained at:
+ * https://opensource.org/licenses
+ ********************************************************/
+
 #include "defines.h"
 
 #include <CL/cl2.hpp>

@@ -1,3 +1,21 @@
+/*******************************************************
+ * Copyright (c) 2016, ArrayFire
+ * All rights reserved.
+ *
+ * This file is distributed under 3-clause BSD license.
+ * The complete license agreement can be obtained at:
+ * https://opensource.org/licenses
+ ********************************************************/
+
+/*
+Portions of this code come from the OpenGL tutorials found at
+https://github.com/Overv/Open.GL
+
+and are licensed under the Creative Commons Attribute-ShareAlike 4.0
+International license:
+
+http://creativecommons.org/licenses/by-sa/4.0/
+ */
 
 // Shader sources
 const char* vertexSource =
