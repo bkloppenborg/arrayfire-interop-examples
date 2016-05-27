@@ -127,8 +127,8 @@ void afInteropTerminate()
 
 /// Copies an OpenCL buffer to a (mapped) OpenGL buffer with no offsets.
 void copy_to_gl_buffer(
-    af_graphics_t src,
-    af_graphics_t gl_dest,
+    compute_resource_ptr src,
+    graphics_resource_ptr gl_dest,
     size_t size,
     size_t src_offset,
     size_t dest_offset)
@@ -154,8 +154,8 @@ void copy_to_gl_buffer(
 }
 
 void copy_from_gl_buffer(
-    af_graphics_t gl_src,
-    af_graphics_t dest,
+    graphics_resource_ptr gl_src,
+    compute_resource_ptr dest,
     size_t size,
     size_t src_offset,
     size_t dest_offset)
@@ -188,11 +188,11 @@ create_buffer(GLuint& buffer,
               GLenum buffer_target,
               const unsigned size,
               GLenum buffer_usage,
-              af_graphics_t& cl_buffer,
+              graphics_resource_ptr & compute_ptr,
 //              cl_mem_flags flags,
               const void* data)
 {
-    cl_mem * t_cl_buffer = new cl_mem();
+    cl_mem * cl_buffer = new cl_mem();
     int status = CL_SUCCESS;
     cl_context context = afcl::getContext();
 
@@ -201,10 +201,10 @@ create_buffer(GLuint& buffer,
     glBufferData(buffer_target, size, data, buffer_usage);
 
     // Create the OpenCL buffer
-    *t_cl_buffer = clCreateFromGLBuffer(context, CL_MEM_READ_WRITE,
+    *cl_buffer = clCreateFromGLBuffer(context, CL_MEM_READ_WRITE,
                                                         buffer, &status);
     OPENCL(status, "clCreateFromGLBuffer failed");
-    cl_buffer = t_cl_buffer;
+    compute_ptr = cl_buffer;
 
     glBindBuffer(buffer_target, 0);
 }
@@ -214,9 +214,9 @@ create_renderbuffer(GLuint& buffer,
                     GLenum format,
                     const unsigned int width,
                     const unsigned int height,
-                    af_graphics_t & cl_buffer)
+                    graphics_resource_ptr & compute_ptr)
 {
-    cl_mem * t_cl_buffer = new cl_mem();
+    cl_mem * cl_buffer = new cl_mem();
     int status = CL_SUCCESS;
     cl_context context = afcl::getContext();
 
@@ -225,10 +225,10 @@ create_renderbuffer(GLuint& buffer,
     glRenderbufferStorage(GL_RENDERBUFFER, format, width, height);
 
     // Create the OpenCL buffer
-    *t_cl_buffer = clCreateFromGLRenderbuffer(context, CL_MEM_READ_WRITE,
+    *cl_buffer = clCreateFromGLRenderbuffer(context, CL_MEM_READ_WRITE,
                                         buffer, &status);
     OPENCL(status, "clCreateFromGLBuffer failed");
-    cl_buffer = t_cl_buffer;
+    compute_ptr = cl_buffer;
 
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
 }
@@ -237,10 +237,10 @@ create_renderbuffer(GLuint& buffer,
 void
 delete_buffer(GLuint buffer,
               GLuint buffer_target,
-              af_graphics_t cl_buffer)
+              graphics_resource_ptr gl_resource)
 {
-    cl_mem * t_cl_buffer = (cl_mem *) cl_buffer;
-    OPENCL(clReleaseMemObject(*t_cl_buffer), "clReleaseMemObject failed");
+    cl_mem * cl_buffer = (cl_mem *) gl_resource;
+    OPENCL(clReleaseMemObject(*cl_buffer), "clReleaseMemObject failed");
     if (buffer_target == GL_RENDERBUFFER) {
         glBindRenderbuffer(buffer_target, buffer);
         glDeleteRenderbuffers(1, &buffer);

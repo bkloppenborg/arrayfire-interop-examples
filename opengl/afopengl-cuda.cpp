@@ -31,8 +31,8 @@ unmap_resource(cudaGraphicsResource_t cuda_resource,
 
 // Gets the device pointer from the mapped resource
 // Sets is_mapped to true
-void copy_to_gl_buffer(af_graphics_t src,
-                       af_graphics_t gl_dest,
+void copy_to_gl_buffer(compute_resource_ptr src,
+                       graphics_resource_ptr gl_dest,
                        size_t size,
                        size_t src_offset,
                        size_t dst_offset)
@@ -52,8 +52,8 @@ void copy_to_gl_buffer(af_graphics_t src,
 
 // Gets the device pointer from the mapped resource
 // Sets is_mapped to true
-void copy_from_gl_buffer(af_graphics_t gl_src,
-                       af_graphics_t dest,
+void copy_from_gl_buffer(graphics_resource_ptr gl_src,
+                       compute_resource_ptr dest,
                        size_t size,
                        size_t src_offset,
                        size_t dst_offset)
@@ -79,7 +79,7 @@ create_buffer(GLuint& buffer,
               GLenum buffer_target,
               const unsigned size,
               GLenum buffer_usage,
-              af_graphics_t & cuda_buffer,
+              compute_resource_ptr & compute_ptr,
 //              GLenum buffer_usage,
               const void* data)
 {
@@ -91,7 +91,7 @@ create_buffer(GLuint& buffer,
     CUDA(cudaGraphicsGLRegisterBuffer(t_cuda_resource,
                                       buffer, cudaGraphicsRegisterFlagsNone));
 
-    cuda_buffer = t_cuda_resource;
+    compute_ptr = t_cuda_resource;
 
     glBindBuffer(buffer_target, 0);
 }
@@ -101,7 +101,7 @@ create_renderbuffer(GLuint& buffer,
                     GLenum format,
                     const unsigned int width,
                     const unsigned int height,
-                    af_graphics_t & cuda_resource)
+                    graphics_resource_ptr & gl_resource)
 {
     cudaGraphicsResource_t * t_cuda_resource = new cudaGraphicsResource_t();
 
@@ -111,7 +111,7 @@ create_renderbuffer(GLuint& buffer,
 
     CUDA(cudaGraphicsGLRegisterImage(t_cuda_resource, buffer, GL_RENDERBUFFER,
                                      cudaGraphicsRegisterFlagsNone));
-    cuda_resource = t_cuda_resource;
+    gl_resource = t_cuda_resource;
 
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
 }
@@ -120,9 +120,9 @@ create_renderbuffer(GLuint& buffer,
 void
 delete_buffer(GLuint buffer,
               GLuint buffer_target,
-              af_graphics_t cuda_resource)
+              graphics_resource_ptr gl_resource)
 {
-    cudaGraphicsResource_t * t_cuda_resource = (cudaGraphicsResource_t*) cuda_resource;
+    cudaGraphicsResource_t * t_cuda_resource = (cudaGraphicsResource_t*) gl_resource;
     CUDA(cudaGraphicsUnregisterResource(*t_cuda_resource));
     if (buffer_target == GL_RENDERBUFFER) {
         glBindRenderbuffer(buffer_target, buffer);

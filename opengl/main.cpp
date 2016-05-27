@@ -82,12 +82,12 @@ int main(int argc, char** argv)
 
     // Create a Vertex Buffer Object and copy the vertex data to it
     GLuint vertex_b;
-    af_graphics_t vertex_cl;
+    graphics_resource_ptr vertex_cl;
     create_buffer(vertex_b, GL_ARRAY_BUFFER, sizeof(vertices), GL_DYNAMIC_DRAW,
                   vertex_cl, vertices);
 
     GLuint colors_b;
-    af_graphics_t colors_cl;
+    graphics_resource_ptr colors_cl;
     create_buffer(colors_b, GL_ARRAY_BUFFER, sizeof(colors), GL_DYNAMIC_DRAW,
                   colors_cl, colors);
 
@@ -118,9 +118,9 @@ int main(int argc, char** argv)
         //    Be sure to acquire and release the OpenGL objects.
         //
 #if defined(AF_CUDA_INTEROP)
-        af_graphics_t d_vertices = af_vertices.device<float>();
+        compute_resource_ptr d_vertices = af_vertices.device<float>();
 #elif defined(AF_OPENCL_INTEROP)
-        af_graphics_t d_vertices = af_vertices.device<cl_mem>();
+        compute_resource_ptr d_vertices = af_vertices.device<cl_mem>();
 #endif
 
         copy_to_gl_buffer(d_vertices, vertex_cl, 6 * sizeof(float));
