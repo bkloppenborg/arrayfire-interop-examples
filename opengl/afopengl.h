@@ -9,8 +9,8 @@
         cl_mem* from clCreateFromGL[Buffer|RenderBuffer|Texture]
     An example of creating a graphics_resource_ptr can be found in create_buffer.
  */
-
 typedef void* graphics_resource_ptr;
+
 /** A backend-agnostic pointer to a compute memory resource. For example:
         CUDA device pointer, like float*, int* from cudaMalloc.
         A cl_mem* from OpenCL's clCreateBuffer
