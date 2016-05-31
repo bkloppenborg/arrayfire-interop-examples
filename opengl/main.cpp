@@ -71,7 +71,7 @@ int main(int argc, char** argv)
     glfwMakeContextCurrent(window);
 
     //
-    // 3. Create OpenGL resources and assign them to cl_mem references as needed.
+    // 3. Create OpenGL resources and assign them to graphics resource references as needed.
     //
     // Create a Vertex Array Object
     GLuint vao;
