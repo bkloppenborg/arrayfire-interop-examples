@@ -38,9 +38,7 @@ unmap_resource(cudaGraphicsResource_t cuda_resource,
     }
 }
 
-// Gets the device pointer from the mapped resource
-// Sets is_mapped to true
-void copy_to_gl_buffer(compute_resource_ptr src,
+void copyToGLBuffer(compute_resource_ptr src,
                        graphics_resource_ptr gl_dest,
                        size_t size,
                        size_t src_offset,
@@ -59,9 +57,23 @@ void copy_to_gl_buffer(compute_resource_ptr src,
     unmap_resource(*t_gl_dest, is_mapped);
 }
 
-// Gets the device pointer from the mapped resource
-// Sets is_mapped to true
-void copy_from_gl_buffer(graphics_resource_ptr gl_src,
+void copyToGLBuffer(
+    af::array & src,
+    graphics_resource_ptr gl_dest,
+    size_t size,
+    size_t src_offset,
+    size_t dest_offset)
+{
+    // Get a compute resource pointer. The specific underlying type
+    // doesn't matter as all of the following functions use void*
+    compute_resource_ptr af_src = (compute_resource_ptr) src.device<float>();
+    copyToGLBuffer(af_src, gl_dest, size, src_offset, dest_offset);
+
+    // Be sure to return control of memory to ArrayFire!
+    src.unlock();
+}
+
+void copyFromGLBuffer(graphics_resource_ptr gl_src,
                        compute_resource_ptr dest,
                        size_t size,
                        size_t src_offset,
@@ -80,11 +92,25 @@ void copy_from_gl_buffer(graphics_resource_ptr gl_src,
     unmap_resource(*t_gl_src, is_mapped);
 }
 
-/// Creates an OpenGL buffer with a corresponding af_graphics_t
-///
-/// af_graphics_t for the CUDA backend represents a `cudaGraphicsResource_t *`
+void copyFromGLBuffer(
+    graphics_resource_ptr gl_src,
+    af::array & dest,
+    size_t size,
+    size_t src_offset,
+    size_t dest_offset)
+{
+    // Get a compute resource pointer. The specific underlying type
+    // doesn't matter as all of the following functions use void*
+    compute_resource_ptr af_dest = (compute_resource_ptr) dest.device<float>();
+
+    copyFromGLBuffer(gl_src, af_dest, size, src_offset, dest_offset);
+    // Be sure to return control of memory to ArrayFire!
+    dest.unlock();
+}
+
+
 void
-create_buffer(GLuint& buffer,
+createBuffer(GLuint& buffer,
               GLenum buffer_target,
               const unsigned size,
               GLenum buffer_usage,
@@ -106,7 +132,7 @@ create_buffer(GLuint& buffer,
 }
 
 void
-create_renderbuffer(GLuint& buffer,
+createRenderbuffer(GLuint& buffer,
                     GLenum format,
                     const unsigned int width,
                     const unsigned int height,
@@ -125,9 +151,8 @@ create_renderbuffer(GLuint& buffer,
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
 }
 
-/// Deletes an OpenGL buffer and corresponding af_graphics_t object
 void
-delete_buffer(GLuint buffer,
+deleteBuffer(GLuint buffer,
               GLuint buffer_target,
               graphics_resource_ptr gl_resource)
 {

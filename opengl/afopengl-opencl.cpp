@@ -1,3 +1,4 @@
+
 /*******************************************************
  * Copyright (c) 2016, ArrayFire
  * All rights reserved.
@@ -6,7 +7,6 @@
  * The complete license agreement can be obtained at:
  * https://opensource.org/licenses
  ********************************************************/
-
 #include "defines.h"
 
 #include <CL/cl2.hpp>
@@ -26,7 +26,7 @@ using namespace std;
 #include <GL/glx.h>
 // Get the properties required to enable OpenCL-OpenGL interop on the specified
 // platform
-vector<cl_context_properties> get_interop_properties(cl_platform_id platform)
+vector<cl_context_properties> getInteropProperties(cl_platform_id platform)
 {
     // Allocate enough space for defining the parameters below:
     vector<cl_context_properties> properties(7);
@@ -92,7 +92,7 @@ void afInteropInit()
     //
     // a. Get properties for OpenCL-OpenGL interop on the current platform
     cl::Platform ocl_platform = cl::Platform::getDefault();
-    vector<cl_context_properties> properties = get_interop_properties(ocl_platform());
+    vector<cl_context_properties> properties = getInteropProperties(ocl_platform());
 
     // b. Construct an OpenCL device corresponding to the interop device 
     size_t input_size = 8;
@@ -135,7 +135,7 @@ void afInteropTerminate()
 
 
 /// Copies an OpenCL buffer to a (mapped) OpenGL buffer with no offsets.
-void copy_to_gl_buffer(
+void copyToGLBuffer(
     compute_resource_ptr src,
     graphics_resource_ptr gl_dest,
     size_t size,
@@ -162,7 +162,24 @@ void copy_to_gl_buffer(
     OPENCL(clWaitForEvents(1, &waitEvent), "clWaitForEvents failed");
 }
 
-void copy_from_gl_buffer(
+
+void copyToGLBuffer(
+    af::array & src,
+    graphics_resource_ptr gl_dest,
+    size_t size,
+    size_t src_offset,
+    size_t dest_offset)
+{
+    // Get a compute resource pointer. The specific underlying type
+    // doesn't matter as all of the following functions use void*
+    compute_resource_ptr af_src = (compute_resource_ptr) src.device<cl_mem>();
+    copyToGLBuffer(af_src, gl_dest, size, src_offset, dest_offset);
+
+    // Be sure to return control of memory to ArrayFire!
+    src.unlock();
+}
+
+void copyFromGLBuffer(
     graphics_resource_ptr gl_src,
     compute_resource_ptr dest,
     size_t size,
@@ -189,11 +206,24 @@ void copy_from_gl_buffer(
     OPENCL(clWaitForEvents(1, &waitEvent), "clWaitForEvents failed");
 }
 
-/// Creates an OpenGL buffer and an af_graphics_t reference to the same
-///
-/// In the OpenCL backend, af_graphics_t is a `cl_mem*`
+void copyFromGLBuffer(
+    graphics_resource_ptr gl_src,
+    af::array & dest,
+    size_t size,
+    size_t src_offset,
+    size_t dest_offset)
+{
+    // Get a compute resource pointer. The specific underlying type
+    // doesn't matter as all of the following functions use void*
+    compute_resource_ptr af_dest = (compute_resource_ptr) dest.device<cl_mem>();
+
+    copyFromGLBuffer(gl_src, af_dest, size, src_offset, dest_offset);
+    // Be sure to return control of memory to ArrayFire!
+    dest.unlock();
+}
+
 void
-create_buffer(GLuint& buffer,
+createBuffer(GLuint& buffer,
               GLenum buffer_target,
               const unsigned size,
               GLenum buffer_usage,
@@ -219,7 +249,7 @@ create_buffer(GLuint& buffer,
 }
 
 void
-create_renderbuffer(GLuint& buffer,
+createRenderbuffer(GLuint& buffer,
                     GLenum format,
                     const unsigned int width,
                     const unsigned int height,
@@ -244,7 +274,7 @@ create_renderbuffer(GLuint& buffer,
 
 
 void
-delete_buffer(GLuint buffer,
+deleteBuffer(GLuint buffer,
               GLuint buffer_target,
               graphics_resource_ptr gl_resource)
 {

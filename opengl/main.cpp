@@ -16,11 +16,6 @@
 #include <GL/glext.h>
 
 #include "arrayfire.h"
-#if defined(AF_CUDA_INTEROP)
-#include "af/cuda.h"
-#elif defined(AF_OPENCL_INTEROP)
-#include "af/opencl.h"
-#endif
 #include "afopengl.h"
 
 #include <iostream>
@@ -96,23 +91,23 @@ int main(int argc, char** argv)
 
     //
     // 3a. Create OpenGL buffers and the corresponding CUDA/OpenCL references to the
-    //     OpenGL memory. The create_buffer function wraps the corresponding CUDA
+    //     OpenGL memory. The createBuffer function wraps the corresponding CUDA
     //     calls to generate cudaGraphicsResource_t* and OpenCL cl_mem* pointers.
-    GLuint vertex_b;
-    graphics_resource_ptr vertex_cl;
-    create_buffer(vertex_b, GL_ARRAY_BUFFER, sizeof(vertices), GL_DYNAMIC_DRAW,
-                  vertex_cl, vertices);
+    GLuint vertex_buffer;
+    graphics_resource_ptr vertex_gl_resource;
+    createBuffer(vertex_buffer, GL_ARRAY_BUFFER, sizeof(vertices), GL_DYNAMIC_DRAW,
+                  vertex_gl_resource, vertices);
 
-    GLuint colors_b;
-    graphics_resource_ptr colors_cl;
-    create_buffer(colors_b, GL_ARRAY_BUFFER, sizeof(colors), GL_DYNAMIC_DRAW,
-                  colors_cl, colors);
+    GLuint colors_buffer;
+    graphics_resource_ptr colors_gl_resource;
+    createBuffer(colors_buffer, GL_ARRAY_BUFFER, sizeof(colors), GL_DYNAMIC_DRAW,
+                  colors_gl_resource, colors);
 
     // Load the shaders.
     GLuint vertexShader, fragmentShader, shaderProgram;
     GLint positionAttrib, colorAttrib;
     initShaders(vertexShader, fragmentShader, shaderProgram, positionAttrib, colorAttrib,
-                vertex_b, colors_b);
+                vertex_buffer, colors_buffer);
 
     //
     // 4. Use ArrayFire in your application
@@ -136,32 +131,30 @@ int main(int argc, char** argv)
         //
 
         // 6a. Copy data from an af::array to an OpenGL buffer:
-        //  i. Obtain pointers to the underlying ArrayFire memory:
-#if defined(AF_CUDA_INTEROP)
-        compute_resource_ptr d_vertices = af_vertices.device<float>();
-#elif defined(AF_OPENCL_INTEROP)
-        compute_resource_ptr d_vertices = af_vertices.device<cl_mem>();
-#endif
- 
-        //  ii. Copy data using copy_to_gl_buffer.
-        //      This function handles all of the necessary operations including glFinish()
-        //      mapping/unmapping buffers, and transferring the data.
-        copy_to_gl_buffer(d_vertices, vertex_cl, 6 * sizeof(float));
+        //  i.   Obtain pointers to the underlying ArrayFire memory
+        //  ii.  Copy data using copyToGLBuffer.
+        //       This function handles all of the necessary operations including glFinish()
+        //       mapping/unmapping buffers, and transferring the data.
+        //  iii. Return memory to ArrayFire using af::array::unlock();
+        //
+        //     We have written a wrapper function which takes af::array objects and
+        //     performs all of the above tasks for you:
+        copyToGLBuffer(af_vertices, vertex_gl_resource, 6 * sizeof(float));
 
         af_vertices = af::constant(0, 2, 3);
+        af_vertices.eval();
         af_print(af_vertices);
 
         // 6b. Copy data to an af::array from an OpenGL buffer:
-        //  i. Obtain pointers to the underlying ArrayFire memory
-#if defined(AF_CUDA_INTEROP)
-        d_vertices = af_vertices.device<float>();
-#elif defined(AF_OPENCL_INTEROP)
-        d_vertices = af_vertices.device<cl_mem>();
-#endif
-        //  ii. Copy data using copy_from_gl_buffer.
-        //      This function handles all of the necessary operations including glFinish()
-        //      mapping/unmapping buffers, and transferring the data.
-        copy_from_gl_buffer(vertex_cl, d_vertices, 6 * sizeof(float));
+        //  i.   Obtain pointers to the underlying ArrayFire memory
+        //  ii.  Copy data using copyFromGLBuffer.
+        //       This function handles all of the necessary operations including glFinish()
+        //       mapping/unmapping buffers, and transferring the data.
+        //  iii. Return memory to ArrayFire using af::array::unlock();
+        //
+        //     We have written a wrapper function which takes af::array objects and
+        //     performs all of the above tasks for you:
+        copyFromGLBuffer(vertex_gl_resource, af_vertices, 6 * sizeof(float));
         af_print(af_vertices);
 
         //
@@ -184,8 +177,8 @@ int main(int argc, char** argv)
     // 8. Clean up OpenGL resources
     //
 
-    delete_buffer(colors_b, GL_ARRAY_BUFFER, colors_cl);
-    delete_buffer(vertex_b, GL_ARRAY_BUFFER, vertex_cl);
+    deleteBuffer(colors_buffer, GL_ARRAY_BUFFER, colors_gl_resource);
+    deleteBuffer(vertex_buffer, GL_ARRAY_BUFFER, vertex_gl_resource);
 
     glDeleteVertexArrays(1, &vao);
 
